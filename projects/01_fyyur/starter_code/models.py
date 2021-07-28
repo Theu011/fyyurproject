@@ -1,24 +1,9 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate, migrate
 import datetime as dt
-from app import *
+from config import *
+from flask_sqlalchemy import SQLAlchemy
 
-
-#----------------------------------------------------------------------------#
-# App Config.
-#----------------------------------------------------------------------------#
-
-app = Flask(__name__)
-moment = Moment(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
-SECRET_KEY = os.urandom(32)
-app.config['SECRET_KEY'] = SECRET_KEY
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-
-migrate = Migrate(app,db)
-
+# Instantiates the db
+db = SQLAlchemy()
 #----------------------------------------------------------------------------#
 # Models.
 #----------------------------------------------------------------------------#
@@ -39,7 +24,7 @@ class Venue(db.Model):
     website_link = db.Column(db.String(120))
     seeking_talent = db.Column(db.Boolean, nullable=False, default=False)
     seeking_description = db.Column(db.String())
-    shows = db.relationship('Show', backref='venue', lazy=True, cascade='all, delete-orphan')
+    shows = db.relationship('Show', backref='venue', lazy='joined', cascade='all, delete')
 
     def __repr__(self):
       return f'<Venue ID: {self.id}, Name: {self.name}'
@@ -60,7 +45,7 @@ class Artist(db.Model):
     website_link = db.Column(db.String(120))
     seeking_venue = db.Column(db.Boolean, nullable=False, default=False)
     seeking_description = db.Column(db.String())
-    shows = db.relationship('Show', backref='artist', lazy=True)
+    shows = db.relationship('Show', backref='artist', lazy='joined', cascade='all, delete')
 
 
 # Show table

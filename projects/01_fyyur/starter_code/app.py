@@ -6,7 +6,17 @@ from itertools import count
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for, json, jsonify
+from flask import (
+  Flask, 
+  render_template, 
+  request, 
+  Response, 
+  flash, 
+  redirect, 
+  url_for, 
+  json, 
+  jsonify
+)
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
@@ -15,12 +25,23 @@ from flask_wtf import Form
 from sqlalchemy.orm import backref
 from sqlalchemy.sql.operators import startswith_op
 from forms import *
-from config import DatabaseURI, SQLALCHEMY_DATABASE_URI
 from flask_migrate import Migrate
+from config import *
 import datetime as dt
 import sys
 import os
-from models import Venue, Show, Artist, app, db
+from models import Venue, Show, Artist, db
+
+
+#----------------------------------------------------------------------------#
+# App Config.
+#----------------------------------------------------------------------------#
+
+app = Flask(__name__)
+app.config.from_object('config')
+moment = Moment(app)
+db.init_app(app)
+migrate = Migrate(app, db)
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -90,14 +111,12 @@ def search_venues():
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
   # Gets the venue by its id
-  venue = Venue.query.get(venue_id)
-  # Gets information about the shows table
-  shows = db.session.query(Show).join(Venue, Venue.id == Show.venue_id).filter(Venue.id == venue_id).all()
+  venue = Venue.query.get_or_404(venue_id)
   past_shows = []
   upcoming_shows = []
 
   # Gets all the shows and it separate into past_shows and upcoming_shows by its date
-  for show in shows:
+  for show in venue.shows:
     temp_show = {
       # Artist information
       'artist_id': show.artist_id,
@@ -111,26 +130,12 @@ def show_venue(venue_id):
       upcoming_shows.append(temp_show)
 
   # Venue information
-  data = {
-    'id': venue.id,
-    'name': venue.name,
-    'genres': venue.genres,
-    'address': venue.address,
-    'city': venue.city,
-    'state': venue.state,
-    'phone': venue.phone, 
-    'website': venue.website_link,
-    'facebook_link': venue.facebook_link,
-    'seeking_talent': venue.seeking_talent,
-    'seeking_description': venue.seeking_description,
-    'image_link': venue.image_link,
-    'past_shows': past_shows,
-    'upcoming_shows': upcoming_shows
-  }
-
+  data = vars(venue)
+  data['past_shows'] = past_shows
+  data['upcoming_shows'] = upcoming_shows
   # Shows count
-  data['upcoming_shows_count'] = len(upcoming_shows)
   data['past_shows_count'] = len(past_shows)
+  data['upcoming_shows_count'] = len(upcoming_shows)
   
   return render_template('pages/show_venue.html', venue=data)
 
@@ -184,11 +189,8 @@ def delete_venue(venue_id):
   try:
     # Gets the venue that will be deleted
     venue = Venue.query.get(venue_id)
-    shows = Show.query.filter(Show.venue_id == venue_id).all()
+    #shows = Show.query.filter(Show.venue_id == venue_id).all()
     # Delete the venue from the database
-    for show in shows:
-      db.session.delete(show)
-      
     db.session.delete(venue)
     db.session.commit()
     flash('The venue has been removed together with all of its shows.')
@@ -243,15 +245,13 @@ def search_artists():
 # Show the artist information
 @app.route('/artists/<int:artist_id>')
 def show_artist(artist_id):
-  # Gets all the shows who have the same artist_id as the artist
-  shows = db.session.query(Show).join(Artist, Artist.id == Show.artist_id).filter(Artist.id == artist_id).all()
   # Gets the artist by its id
-  artist = Artist.query.get(artist_id)
+  artist = Artist.query.get_or_404(artist_id)
   past_shows = []
   upcoming_shows = []
 
   # Separate the shows in past_shows and upcoming_shows by its start_time
-  for show in shows:
+  for show in artist.shows:
     # Venue information about the show
     temp_show = {
       'venue_id': show.venue_id,
@@ -263,24 +263,11 @@ def show_artist(artist_id):
       past_shows.append(temp_show)
     else:
       upcoming_shows.append(temp_show)
-  data = []
+  
   # Artist information
-  data ={
-    "id": artist.id,
-    "name": artist.name,
-    "genres": artist.genres,
-    "city": artist.city,
-    "state": artist.state,
-    "phone": artist.phone,
-    "website": artist.website_link,
-    "facebook_link": artist.facebook_link,
-    "seeking_venue": artist.seeking_venue,
-    "seeking_description": artist.seeking_description,
-    "image_link": artist.image_link,
-    'past_shows': past_shows,
-    'upcoming_shows': upcoming_shows
-  }
-
+  data = vars(artist)
+  data['past_shows'] = past_shows
+  data['upcoming_shows'] = upcoming_shows
   # Count of shows
   data['past_shows_count'] = len(past_shows)
   data['upcoming_shows_count'] = len(upcoming_shows)
