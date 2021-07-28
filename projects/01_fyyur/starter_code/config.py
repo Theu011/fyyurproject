@@ -11,7 +11,7 @@ DEBUG = True
 class DatabaseURI:
     DATABASE_NAME = 'fyyurproject'
     username = 'postgres'
-    password = 'rockstar01'
+    password = 'yourpassword'
     url = 'localhost:5432'
 
 # TODO IMPLEMENT DATABASE URL
