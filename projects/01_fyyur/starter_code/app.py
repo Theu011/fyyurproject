@@ -20,72 +20,7 @@ from flask_migrate import Migrate
 import datetime as dt
 import sys
 import os
-#----------------------------------------------------------------------------#
-# App Config.
-#----------------------------------------------------------------------------#
-
-app = Flask(__name__)
-moment = Moment(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
-SECRET_KEY = os.urandom(32)
-app.config['SECRET_KEY'] = SECRET_KEY
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-
-migrate = Migrate(app,db)
-#----------------------------------------------------------------------------#
-# Models.
-#----------------------------------------------------------------------------#
-
-# Venue table 
-class Venue(db.Model):
-    __tablename__ = 'Venue'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    address = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    genres = db.Column(db.ARRAY(db.String))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    website_link = db.Column(db.String(120))
-    seeking_talent = db.Column(db.Boolean, nullable=False, default=False)
-    seeking_description = db.Column(db.String())
-    shows = db.relationship('Show', backref='venue', lazy=True, cascade='all, delete-orphan')
-
-    def __repr__(self):
-      return f'<Venue ID: {self.id}, Name: {self.name}'
-
-
-# Artist table
-class Artist(db.Model):
-    __tablename__ = 'Artist'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    genres = db.Column(db.ARRAY(db.String(120)))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    website_link = db.Column(db.String(120))
-    seeking_venue = db.Column(db.Boolean, nullable=False, default=False)
-    seeking_description = db.Column(db.String())
-    shows = db.relationship('Show', backref='artist', lazy=True)
-
-
-# Show table
-class Show(db.Model):
-  __tablename__ = 'Shows'
-
-  id = db.Column(db.Integer, primary_key=True)
-  artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'))
-  venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'))
-  start_time = db.Column(db.DateTime, default=dt.datetime.now())
-
+from models import Venue, Show, Artist, app, db
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -184,7 +119,7 @@ def show_venue(venue_id):
     'city': venue.city,
     'state': venue.state,
     'phone': venue.phone, 
-    'website_link': venue.website_link,
+    'website': venue.website_link,
     'facebook_link': venue.facebook_link,
     'seeking_talent': venue.seeking_talent,
     'seeking_description': venue.seeking_description,
@@ -249,7 +184,11 @@ def delete_venue(venue_id):
   try:
     # Gets the venue that will be deleted
     venue = Venue.query.get(venue_id)
+    shows = Show.query.filter(Show.venue_id == venue_id).all()
     # Delete the venue from the database
+    for show in shows:
+      db.session.delete(show)
+      
     db.session.delete(venue)
     db.session.commit()
     flash('The venue has been removed together with all of its shows.')
@@ -333,7 +272,7 @@ def show_artist(artist_id):
     "city": artist.city,
     "state": artist.state,
     "phone": artist.phone,
-    "website_link": artist.website_link,
+    "website": artist.website_link,
     "facebook_link": artist.facebook_link,
     "seeking_venue": artist.seeking_venue,
     "seeking_description": artist.seeking_description,
@@ -472,7 +411,11 @@ def delete_artist(artist_id):
   try:
     # Gets the artist who will be deleted by its id
     artist = Artist.query.get(artist_id)
+    shows = Show.query.filter(Show.artist_id==artist_id).all()
     # Delete artist from the database
+    for show in shows:
+      db.session.delete(show)
+
     db.session.delete(artist)
     db.session.commit()
     flash('The Artist has been removed together with all of its shows.')
